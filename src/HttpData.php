@@ -3,7 +3,17 @@ error_reporting(E_ALL);
 
 class HttpData
 {
-	use Database;
+    private $db_used = null;
+
+	use DatabaseMongo;
+    //use DatabaseMysql;
+
+    function __construct()
+    {
+        $this->db_used = $this->db;
+    }
+
+
     /**
    * @return [type]
    */
@@ -26,7 +36,7 @@ class HttpData
         $this->level = $post_data['level'];
         $this->site = $post_data['site'];
 
-        $insert = $this->makeInsertSQL();
+        $insert = $this->makeInsert();
 
         # TODO Header
         if (is_string($insert)) {
@@ -79,47 +89,77 @@ class HttpData
     /**
      * @return [type]
      */
-	private function makeInsertSQL()
+	private function makeInsert()
 	{
 		$to_save = [
 			'notification_sent' => static::$not_sent,
 			'data_created' => date('Y-m-d H:i:s', strtotime('now')),
+            'incidents' => 1,
+            'updated_in' => '0000-00-00 00-00-00',
 			'solved' => static::$not_solved_yet,
 			'level' => $this->determineLevel(),
-			'log_name' => $this->log_name, 
+			'log_name' => $this->log_name,
 			'identifier' => $this->identifier,
 			'messages' => $this->messages,
 			'site' => $this->site
 		];
 
-        if ($this->verifyExistence() == true) {
+        if ($this->db_used == 'mongodb') {
+            if ($this->verifyExistenceMongo($to_save) == true) {
+                return false;
+            }
+            return $this->insert($to_save);    
+        }    
+
+        if ($this->verifyExistenceMysql() == true) {
             return false;    
         }
 
-		$this->setTable('notifications');
-        # $this->debugSql(true);
+        $this->setTable('notifications');
         $this->insert($to_save);
 
-		if ($this->getAffectedRows() > 0) {
-			return true;
-		}
-		
-		return $this->getSqlError();
+        if ($this->getAffectedRows() > 0) {
+            return true;
+        }
+
+        return $this->getSqlError();
 	}
+
+    private function verifyExistenceMongo($to_save)
+    {
+        $ret = $this->select([
+            'filter' => [
+                'site' => $this->site, 'messages' => $this->messages
+            ]
+        ], true);
+
+        if (is_array($ret)) {
+            $ret = reset($ret);
+            $criteria = ['id' => $ret['id']];
+            $to_save['data_created'] = $ret['data_created'];
+            $to_save['incidents'] = ++$ret['incidents'];
+            $to_save['updated_in'] = date('Y-m-d H:i:s', strtotime('now'));
+            $this->update($criteria, $to_save);
+
+            return true;
+        }
+
+        return false;
+    }
 
     /**
      * @return [type]
      */
-    private function verifyExistence()
+    private function verifyExistenceMysql()
     {
-        $this->setTable('notifications');
-
         $filter = [
             'filter' => [
                 'messages' => "'$this->messages'",
                 'site' => "'$this->site'"
             ]
         ];
+        
+        $this->setTable('notifications');
 
         $result_query = $this->select($filter);
         if ($result_query == false) {
@@ -142,8 +182,10 @@ class HttpData
             return header('HTTP/1.1 422');
         }
 
-        //$this->debugSql(true);
-        $this->setTable('notifications');
+        if ($this->db_used == 'mysql') {
+            $this->setTable('notifications');
+        }
+
         $result_query = $this->select($filter);
 
         if ($result_query == false) {

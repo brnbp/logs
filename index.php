@@ -7,7 +7,7 @@ include 'lib/lib.php';
 function __autoload($class)
 {
 	$file_path = 'lib/'.$class.'.php';
-
+	
 	if (file_exists($file_path) == false) {
 		$file_path = 'src/'.$class.'.php';
 	}
@@ -23,6 +23,5 @@ $route->addClassResource(
 		'/Logs'
 	]
 );
-
 
 $route->submit();

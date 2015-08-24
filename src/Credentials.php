@@ -2,12 +2,12 @@
 
 interface Credentials
 {
-    const HOST = '127.0.0.1';
+    const HOST = 'localhost';
 
     const USER = 'root';
 
     const PASS = '';
 
-    const DB = 'notifications';
+    const DB = '';
 
 }

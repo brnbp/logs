@@ -7,7 +7,8 @@
  */
 for($i = 1; $i <= 1; $i++):
 
-	$cod_produto = str_replace('.', '', rand($i, 500) / ($i * ($i^10)+1*50));
+	//$cod_produto = str_replace('.', '', rand($i, 500) / ($i * ($i^10)+1*50));
+	$cod_produto = 54321;
 
 	if ($i % 2 == 0) {
 		$erro = [
@@ -50,7 +51,7 @@ function set_log(array $logData)
 	$log_name = $logData['level'].'_'.$logData['log_name'];
 
 	// PATH TO WHERE API IS HOSTED
-	$url = '{{url-api-path}}/logs/notification';
+	$url = 'http://localhost/logs-notification/Logs/notification';
 	return do_post($logData, $url);
 }
 
@@ -76,7 +77,7 @@ function do_post(array $data, $url)
 	curl_setopt($ch, CURLOPT_HTTPHEADER,  array(
                 'Content-type: application/json',
                 'Accept: application/json',
-                'auth: {{pass-auth}}'
+                'auth: sayfriendandenter'
             ));
 
 	$result = curl_exec($ch);

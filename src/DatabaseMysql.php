@@ -1,7 +1,8 @@
 <?php
 
-trait Database
+trait DatabaseMysql
 {
+	public $db = 'mysql';
 	private $connection = null;
 	private $sql = false;
 	private $table = null;
@@ -44,10 +45,10 @@ trait Database
 		$values = $this->getValuesSQLFormated($dados);
 
 		$query = 'INSERT INTO '.$this->table.'('.$keys.') VALUES('.$values.')';
-		
-        if ($this->sql == true) {
-            die($query);
-        }
+
+    if ($this->sql == true) {
+        die($query);
+    }
 
 		$this->doQuery($query);
 	}
@@ -155,9 +156,8 @@ trait Database
 	 */
 	private function doQuery($query)
 	{
-		//$this->connection->query($this->escapeStrings($query));
-        $this->table = null;
-        return $this->connection->query($query);
+      $this->table = null;
+      return $this->connection->query($query);
 	}
 
 	private function fetchObject($result_query)
