@@ -11,7 +11,7 @@ trait DatabaseMongo
 
 	public function initConnection()
 	{
-    $this->connection = new MongoClient(); // localhost
+    	$this->connection = new MongoClient(); // localhost
 
 		$this->database = $this->connection->notification;
 
