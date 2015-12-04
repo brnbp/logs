@@ -28,6 +28,8 @@ function printr()
 
 function printrx($data)
 {
-    printr($data);
-    die();
+    if (isset($_COOKIE['debug']) && $_COOKIE['debug']) {
+        printr($data);
+        die();
+    }
 }
