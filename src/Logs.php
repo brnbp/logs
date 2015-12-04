@@ -1,136 +1,157 @@
 <?php
-error_reporting(E_ALL);
+#error_reporting(E_ALL);
 
-class Logs extends HttpData
+class Logs extends Authenticate
 {
 
-   /**
-   * [$messages description]
-   * @var string
-   */
-	protected $messages = '';
+    use DatabaseMysql;
+    # use DatabaseMongo;
 
-   /**
-   * [$identifier description]
-   * @var string
-   */
-	protected $identifier = '';
+    protected $db_used = null;
 
-   /**
-   * [$log_name description]
-   * @var string
-   */
-	protected $log_name = '';
-
-   /**
-   * [$level description]
-   * @var string
-   */
-   protected $level = '';
-
-  /**
-  * [$site description]
-  * @var string
-  */
-  protected $site = '';
-
-  /**
-   * log nao resolvido ainda
-   * @var integer
-   */
-	static protected $not_solved_yet = 0;
-
-  /**
-   * log jÃ¡ resolvido
-   * @var integer
-   */
-	static protected $solved = 1;
-
-  /**
-   * log sendo analisado
-   * @var integer
-   */
-	static protected $in_analysis = 2;
-
-  /**
-   * ocorrencia do log enviado por email
-   * @var integer
-   */
-	static protected $sent = 1;
-
-  /**
-   * ocorrencia do log nao enviado por email
-   * @var integer
-   */
-	static protected $not_sent = 0;
-
-	/**
-	* [$levels description]
-	* @var [type]
-	*/
-	static protected $levels = [
-		'critical' => 1,
-		'warning' => 2,
-		'info' => 3
-	];
+    /** @var  SLACK_WEB_HOOK url to use bot on slack */
+    const SLACK_WEB_HOOK = 'insert_here';
 
     /**
-     * [$nodes_permitted description]
+    * [$messages description]
+    * @var string
+    */
+    protected $messages = '';
+
+    /**
+    * [$identifier description]
+    * @var string
+    */
+    protected $identifier = '';
+
+    /**
+    * [$log_name description]
+    * @var string
+    */
+    protected $log_name = '';
+
+    /**
+    * [$level description]
+    * @var string
+    */
+    protected $level = '';
+
+    /**
+    * [$site description]
+    * @var string
+    */
+    protected $site = '';
+
+    /**
+     * [$levels description]
      * @var [type]
-     */
-    static protected $nodes_permitted = [
-        'identifier',
-        'log_name',
-        'level',
-        'messages',
-        'site'
+    */
+    static protected $levels = [
+    	'critical' => 1,
+    	'warning' => 2,
+    	'info' => 3
     ];
 
-    const AUTH = '2e134ad1281e029e675ede83fbfa32bd';
+    /**
+     * metodo responsavel por receber get/post da api
+     * e gerenciar para o tratamento necessario
+     */
+    public function notification($filter = null, $param = null)
+  	{
+        if ($this->authenticate() == false) {
+            return header('HTTP/1.1 403 You Shall Not Pass');
+        }
+
+        if (func_num_args() > 2) {
+            return header('HTTP/1.1 422 Number of Resources Not Allowed');
+        }
+
+        switch ($_SERVER['REQUEST_METHOD']) {
+            case 'POST':
+              $this->Post = new PostNotification();
+              $this->Post->create();
+              break;
+
+            case 'GET':
+                $this->Get = new GetNotification();
+                $this->Get->notifications($filter, $param);
+                break;
+        }
+  	}
 
     /**
-     * @param  [type]
-     * @param  [type]
-     * @return [type]
+     * Determina o level do log de acordo com a string fornecida
+     * @param  string $level string contendo nivel do log
      */
-	public function notification($filter = null, $param = null)
-	{
-      if ($this->authenticate() == false) {
-          return header('HTTP/1.1 403 You Shall Not Pass');
-      }
-
-      if (func_num_args() > 2) {
-          return header('HTTP/1.1 422 Number of Resources Not Allowed');
-      }
-
-      $this->initConnection();
-
-      switch($_SERVER['REQUEST_METHOD']) {
-          case 'POST':
-            $this->createNotification();
-            break;
-          case 'GET':
-            $this->getNotification($filter, $param);
-      }
-	}
-
-    /**
-     * @return [type]
-     */
-    private function authenticate()
+    protected function determineLevel($level = null)
     {
-        if (isset(getallheaders()['auth']) == false) {
-            return false;
+        if (is_null($level) == false) {
+            $this->level = $level;
         }
 
-        $pass = getallheaders()['auth'];
-        $pass = md5(preg_replace("/[^a-z]+/", " ", $pass));
+        $this->level = trim(strtolower($this->level));
 
-        if ($pass == self::AUTH) {
-            return true;
+        if (array_key_exists($this->level, static::$levels)) {
+            return static::$levels[$this->level];
         }
-     
+
         return false;
+    }
+
+    /**
+     * Envia Notificação para o Slack ao ocorrer log Critical
+     * @param array $data array com as informações do log critical que foi inserido
+     */
+    protected function setNotificationSlack($data)
+    {
+        $subject = $data['log_name'];
+        if (strpos($data['log_name'], '_') == true) {
+            $subject = strstr($data['log_name'], '_', true);
+        }
+
+        $color = '';
+        switch ($this->determineLevel()) {
+            case 1:
+                $color = 'danger';
+                break;
+            case 2:
+                $color = '#F2D600';
+                break;
+            default:
+                $color = '#00C2E0';
+                break;
+        }
+
+        $message = json_encode(
+            [
+                'channel' => "#logs",
+                'username' => strtoupper($subject),
+                'icon_url' => 'cdn_path_here/logs/img/'.$subject.'.png',
+                'attachments' => [
+                    [
+                        'title' => "SITE: ".$data['site']." | LOGNAME: ".$data['log_name'],
+                        'text' => 'Identifier: ' . $data['identifier'],
+                        'color' => $color,
+                        'fields' => [
+                            [
+                                'value' => substr(stripslashes($this->messages), 0, 700),
+                                'short' => true
+                            ]
+                        ]
+                    ]
+                ],
+            ]
+        );
+
+        $opts = [
+            'http' => [
+                'method'  => 'POST',
+                'header'  => 'Content-type: application/x-www-form-urlencoded',
+                'content' => "payload=$message"
+            ]
+        ];
+        $context  = stream_context_create($opts);
+        $ret = file_get_contents(self::SLACK_WEB_HOOK, false, $context);
     }
 
 }

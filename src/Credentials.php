@@ -6,8 +6,8 @@ interface Credentials
 
     const USER = 'root';
 
-    const PASS = '';
+    const PASS = 'admin';
 
-    const DB = '';
+    const DB = 'logs';
 
 }
