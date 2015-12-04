@@ -11,16 +11,16 @@ trait DatabaseMongo
 
 	public function initConnection()
 	{
-    $this->connection = new MongoClient(); // localhost
+    	$this->connection = new MongoClient("ip_address"); // localhost
 
-		$this->database = $this->connection->notification;
+		$this->database = $this->connection->selectDB('notification');
 
-		$this->collection = $this->database->logs;
+		$this->collection = new MongoCollection($this->database, 'logs');
 	}
 
 	/**
 	 * INSERT query
-	 * @param  array  $dados array onde keys são os campos da tabela 
+	 * @param  array  $dados array onde keys são os campos da collection 
 	 *  e values as informações que serão inseridas
 	*/
 	public function insert(array $dados)
@@ -28,9 +28,9 @@ trait DatabaseMongo
 		$insert = $this->collection->insert($dados);
 		//$insert = $this->collection->update($verify, $dados, ['upsert' => true]);
 
-    if ($insert['ok']) {
-      return true;
-    }
+	    if ($insert['ok']) {
+	      return true;
+	    }
 
 		return false;
 	}
@@ -38,7 +38,7 @@ trait DatabaseMongo
 	public function update(array $criteria, array $data)
 	{
 		$criteria['_id'] = new MongoID($criteria['id']);
-    unset($criteria['id']);
+    	unset($criteria['id']);
 
 		$update = $this->collection->update($criteria, $data);
 
@@ -62,7 +62,7 @@ trait DatabaseMongo
 		}
 
 		$filter = $this->setFilter($filter);
-			
+
 		$select = $this->fetchObject($this->collection->find($filter), $return_id);
 
 		return $select;
