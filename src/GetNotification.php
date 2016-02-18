@@ -30,6 +30,10 @@ class GetNotification extends Logs
 
         header('HTTP/1.1 200');
         header('Content-Type: application/json');
+        
+        foreach($result_query['results'] as $result) {
+            $result->messages = json_decode($result->messages, true);
+        }
 
         echo json_encode($result_query);
     }
